@@ -1,0 +1,483 @@
+num=input("輸入股票代號")
+print(num)
+import requests as req
+import time
+web="https://statementdog.com/users/sign_in"
+headers={'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36'}
+data1=req.get(web)
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+PATH='C:/Users/user/Desktop/chromedriver'
+driver=webdriver.Chrome(PATH)
+driver.get(web)
+username=driver.find_element_by_name('user[email]')
+username.send_keys('wen7629@hotmail.com')
+password=driver.find_element_by_name('user[password]')
+password.send_keys('wenwinla666')
+login=driver.find_element_by_xpath('//*[@id="login-form"]/div/button').click()
+searchid=driver.find_element_by_name('stockid')
+searchid.send_keys(num)
+loginbutton=driver.find_element_by_xpath('//*[@id="navi-wrapper"]/div[2]/div[1]/div[3]/form/a')
+time.sleep(5)
+loginbutton.click()
+annual_report=driver.find_element_by_xpath('//*[@id="menu"]/div[3]').click()
+revenue_page=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[1]').click()
+from bs4 import BeautifulSoup
+import pandas as pd
+import openpyxl
+from datetime import datetime
+
+#計算每月營收
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+revenue=soup.find_all("table")[3]
+revenue_year_list,revenue_money_list,revenue_rate_list=[],[],[]
+revenue_year=revenue.find_all("th")[0:100]
+for a in revenue_year: 
+    revenue_year_text=a.text
+    revenue_year_list.append(revenue_year_text)
+revenue_money=revenue.find_all("tr")[1]
+for b in revenue_money: 
+    revenue_money_text=b.text
+    revenue_money_list.append(revenue_money_text.replace(",","").replace("無","0"))
+revenue_rate=revenue.find_all("tr")[2]    
+for c in revenue_rate: 
+    revenue_rate_text=c.text
+    revenue_rate_list.append(revenue_rate_text.replace("無","0"))
+revenuelist=pd.DataFrame()
+revenuelist["每月營收"]=revenue_money_list
+revenuelist["年增減率"]=revenue_rate_list
+revenue_money=revenuelist["每月營收"].map(lambda x:int(x))
+revenue_rate=revenuelist["年增減率"].map(lambda x:float(x))
+revenuelist["每月營收"]=revenue_money
+revenuelist["年增減率"]=revenue_rate
+newrevenuelist=revenuelist.T
+newrevenuelist.columns=revenue_year_list
+
+#計算每股盈餘
+eps=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[2]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+eps_page=soup.find_all("table")[3]
+eps_year=eps_page.find_all("th")[0:100]
+eps_year_list, eps_money_list=[],[]
+for a in eps_year: 
+    eps_year_text=a.text
+    eps_year_list.append(eps_year_text.replace("無","0"))
+eps_money=eps_page.find_all("tr")[1]
+for b in eps_money: 
+    eps_money_text=b.text
+    eps_money_list.append(eps_money_text.replace("無","0"))
+eps_list=pd.DataFrame()
+eps_list['單季EPS']= eps_money_list
+eps_money=eps_list['單季EPS'].map(lambda x:float(x))
+eps_list['單季EPS']=eps_money
+neweps_list=eps_list.T
+neweps_list.columns= eps_year_list
+
+#計算每股净值
+pe=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[3]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+pe_page=soup.find_all("table")[3]
+pe_year=pe_page.find_all("th")[0:100]
+pe_year_list, pe_money_list=[],[]
+for a in pe_year:
+    pe_year_text=a.text
+    pe_year_list.append(pe_year_text.replace("無","0"))
+pe_money=pe_page.find_all("tr")[1]
+for b in pe_money:
+    pe_money_text=b.text
+    pe_money_list.append(pe_money_text.replace("無","0"))
+pe_list=pd.DataFrame()
+pe_list["每股净值"]= pe_money_list
+pe_money=pe_list["每股净值"].map(lambda x:float(x))
+pe_list["每股净值"]= pe_money
+newpe_list=pe_list.T
+newpe_list.columns=pe_year_list
+
+#計算綜合損益表
+income=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[4]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+income_page=soup.find_all("table")[3]
+income_year_list, income_revenue_list,gross_profit_list=[],[],[]
+sale_expanse_list,manage_expanse_list,research_expanse_list,total_expanse_list=[],[],[],[]
+bussiness_profit_list,ebit_list,profit_list=[],[],[]
+income_year=income_page.find_all("th")[0:100]
+for a in income_year:
+    income_year_text=a.text
+    income_year_list.append(income_year_text)
+income_revenue=income_page.find_all("tr")[1]
+for b in income_revenue:
+    income_revenue_text=b.text
+    income_revenue_list.append(income_revenue_text.replace(",","").replace("無","0"))
+gross_profit=income_page.find_all("tr")[2]
+for c in gross_profit:
+    gross_profit_text=c.text
+    gross_profit_list.append(gross_profit_text.replace(",","").replace("無","0"))
+sale_expanse=income_page.find_all("tr")[3]
+for d in sale_expanse:
+    sale_expanse_text=d.text
+    sale_expanse_list.append(sale_expanse_text.replace(",","").replace("無","0"))
+manage_expanse=income_page.find_all("tr")[4]
+for e in manage_expanse:
+    manage_expanse_text=e.text
+    manage_expanse_list.append(manage_expanse_text.replace(",","").replace("無","0"))
+research_expanse=income_page.find_all("tr")[5]
+for f in research_expanse:
+    research_expanse_text=f.text
+    research_expanse_list.append(research_expanse_text.replace(",","").replace("無","0"))
+total_expanse=income_page.find_all("tr")[6]
+for g in total_expanse:
+    total_expanse_text=g.text
+    total_expanse_list.append(total_expanse_text.replace(",","").replace("無","0"))    
+bussiness_profit=income_page.find_all("tr")[7]
+for h in bussiness_profit:
+    bussiness_profit_text=h.text
+    bussiness_profit_list.append(bussiness_profit_text.replace(",","").replace("無","0"))
+ebit=income_page.find_all("tr")[8]
+for i in ebit:
+    ebit_text=i.text
+    ebit_list.append(ebit_text.replace(",","").replace("無","0"))
+profit=income_page.find_all("tr")[9]
+for j in profit:
+    profit_text=j.text
+    profit_list.append(profit_text.replace(",","").replace("無","0")) 
+
+income_list=pd.DataFrame()
+income_list["營收"]=income_revenue_list
+income_list["毛利"]=gross_profit_list
+income_list["銷售費用"]=sale_expanse_list
+income_list["管理費用"]=manage_expanse_list
+income_list["研發費用"]=research_expanse_list
+income_list["營業費用"]=total_expanse_list
+income_list["營業利益"]=bussiness_profit_list
+income_list["稅前利益"]=ebit_list
+income_list["稅后利益"]=profit_list
+n_income_revenue=income_list["營收"].map(lambda x:int(x))
+n_gross_profit=income_list["毛利"].map(lambda x:int(x))
+n_sale_expanse=income_list["銷售費用"].map(lambda x:int(x))
+n_manage_expanse=income_list["管理費用"].map(lambda x:int(x))
+n_research_expanse=income_list["研發費用"].map(lambda x:int(x))
+n_total_expanse=income_list["營業費用"].map(lambda x:int(x))
+n_bussiness_profit=income_list["營業利益"].map(lambda x:int(x))
+n_ebit=income_list["稅前利益"].map(lambda x:int(x))
+n_profit=income_list["稅后利益"].map(lambda x:int(x))
+income_list["營收"]=n_income_revenue
+income_list["毛利"]=n_gross_profit
+income_list["銷售費用"]=n_sale_expanse
+income_list["管理費用"]=n_manage_expanse
+income_list["研發費用"]=n_research_expanse
+income_list["營業費用"]=n_total_expanse
+income_list["營業利益"]=n_bussiness_profit
+income_list["稅前利益"]=n_ebit
+income_list["稅后利益"]=n_profit
+newincome_list=income_list.T
+newincome_list.columns=income_year_list
+
+#計算資產
+asset=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[5]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+asset_page=soup.find_all("table")[3]
+asset_year_list,cash_list,short_term_invest_list=[],[],[]
+receivable_list,stock_list,other_current_list,current_asset_list=[],[],[],[]
+long_term_invest_list,fix_asset_list,other_asset_list,total_asset_list=[],[],[],[]
+asset_year=asset_page.find_all("th")[0:100]
+for a in asset_year:
+    asset_year_text=a.text
+    asset_year_list.append(asset_year_text.replace("無","0"))
+cash=asset_page.find_all("tr")[1]
+for b in cash:
+    cash_text=b.text
+    cash_list.append(cash_text.replace(",","").replace("無","0"))
+short_term_invest=asset_page.find_all("tr")[2]
+for c in short_term_invest:
+    short_term_invest_text=c.text
+    short_term_invest_list.append(short_term_invest_text.replace(",","").replace("無","0"))
+receivable=asset_page.find_all("tr")[3]
+for d in receivable:
+    receivable_text=d.text
+    receivable_list.append(receivable_text.replace(",","").replace("無","0"))
+stock=asset_page.find_all("tr")[4]
+for e in stock:
+    stock_text=e.text
+    stock_list.append(stock_text.replace(",","").replace("無","0"))
+other_current=asset_page.find_all("tr")[5]
+for f in other_current:
+    other_current_text=f.text
+    other_current_list.append(other_current_text.replace(",","").replace("無","0"))
+current_asset=asset_page.find_all("tr")[6]
+for g in current_asset:
+    current_asset_text=g.text
+    current_asset_list.append(current_asset_text.replace(",","").replace("無","0"))    
+long_term_invest=asset_page.find_all("tr")[7]
+for h in long_term_invest:
+    long_term_invest_text=h.text
+    long_term_invest_list.append(long_term_invest_text.replace(",","").replace("無","0"))
+fix_asset=asset_page.find_all("tr")[8]
+for i in fix_asset:
+    fix_asset_text=i.text
+    fix_asset_list.append(fix_asset_text.replace(",","").replace("無","0"))
+other_asset=asset_page.find_all("tr")[9]
+for j in other_asset:
+    other_asset_text=j.text
+    other_asset_list.append(other_asset_text.replace(",","").replace("無","0")) 
+total_asset=asset_page.find_all("tr")[10]
+for k in total_asset:
+    total_asset_text=k.text
+    total_asset_list.append(total_asset_text.replace(",","").replace("無","0")) 
+
+#計算負債與權益
+de=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[6]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+de_page=soup.find_all("table")[3]
+de_year_list,short_debt_list,short_notes_payable_list=[],[],[]
+short_payable_list,advance_payment_list,one_year_debt_list,other_current_debt_list=[],[],[],[]
+total_current_debt_list,long_term_debt_list,other_debt_list,total_debt_list,total_de_list=[],[],[],[],[]
+de_year=de_page.find_all("th")[0:100]
+for a in de_year:
+    de_year_text=a.text
+    de_year_list.append(de_year_text)
+short_debt=de_page.find_all("tr")[1]
+for b in short_debt:
+    short_debt_text=b.text
+    short_debt_list.append(short_debt_text.replace(",","").replace("無","0"))
+short_notes_payable=de_page.find_all("tr")[2]
+for c in short_notes_payable:
+    short_notes_payable_text=c.text
+    short_notes_payable_list.append(short_notes_payable_text.replace(",","").replace("無","0"))
+short_payable=de_page.find_all("tr")[3]
+for d in short_payable:
+    short_payable_text=d.text
+    short_payable_list.append(short_payable_text.replace(",","").replace("無","0"))
+advance_payment=de_page.find_all("tr")[4]
+for e in advance_payment:
+    advance_payment_text=e.text
+    advance_payment_list.append(advance_payment_text.replace(",","").replace("無","0"))
+one_year_debt=de_page.find_all("tr")[5]
+for f in one_year_debt:
+    one_year_debt_text=f.text
+    one_year_debt_list.append(one_year_debt_text.replace(",","").replace("無","0"))
+other_current_debt=de_page.find_all("tr")[6]
+for g in other_current_debt:
+    other_current_debt_text=g.text
+    other_current_debt_list.append(other_current_debt_text.replace(",","").replace("無","0"))    
+total_current_debt=de_page.find_all("tr")[7]
+for h in total_current_debt:
+    total_current_debt_text=h.text
+    total_current_debt_list.append(total_current_debt_text.replace(",","").replace("無","0"))
+long_term_debt=de_page.find_all("tr")[8]
+for i in long_term_debt:
+    long_term_debt_text=i.text
+    long_term_debt_list.append(long_term_debt_text.replace(",","").replace("無","0"))
+other_debt=de_page.find_all("tr")[9]
+for j in other_debt:
+    other_debt_text=j.text
+    other_debt_list.append(other_debt_text.replace(",","").replace("無","0")) 
+total_debt=de_page.find_all("tr")[10]
+for k in total_debt:
+    total_debt_text=k.text
+    total_debt_list.append(total_debt_text.replace(",","").replace("無","0")) 
+total_de=de_page.find_all("tr")[11]
+for l in total_de:
+    total_de_text=l.text
+    total_de_list.append(total_de_text.replace(",","").replace("無","0")) 
+
+asset_list=pd.DataFrame()
+asset_list["現金及約當現金"]=cash_list
+asset_list["短期投資"]=short_term_invest_list
+asset_list["應收帳款及票據"]=receivable_list
+asset_list["存貨"]=stock_list
+asset_list["其餘流動資產"]=other_current_list
+asset_list["流動資產"]=current_asset_list
+asset_list["長期投資"]=long_term_invest_list
+asset_list["固定資產"]=fix_asset_list
+asset_list["其餘資產"]= other_asset_list
+asset_list["總資產"]=total_asset_list
+n_cash=asset_list["現金及約當現金"].map(lambda x:int(x))
+n_short_term_invest=asset_list["短期投資"].map(lambda x:int(x))
+n_receivable=asset_list["應收帳款及票據"].map(lambda x:int(x))
+n_stock=asset_list["存貨"].map(lambda x:int(x))
+n_other_current=asset_list["其餘流動資產"].map(lambda x:int(x))
+n_current_asset=asset_list["流動資產"].map(lambda x:int(x))
+n_long_term_invest=asset_list["長期投資"].map(lambda x:int(x))
+n_fix_asset=asset_list["固定資產"].map(lambda x:int(x))
+n_other_asset=asset_list["其餘資產"].map(lambda x:int(x))
+n_total_asset=asset_list["總資產"].map(lambda x:int(x))
+asset_list["現金及約當現金"]=n_cash
+asset_list["短期投資"]=n_short_term_invest
+asset_list["應收帳款及票據"]=n_receivable
+asset_list["存貨"]=n_stock
+asset_list["其餘流動資產"]=n_other_current
+asset_list["流動資產"]=n_current_asset
+asset_list["長期投資"]=n_long_term_invest
+asset_list["固定資產"]=n_fix_asset
+asset_list["其餘資產"]=n_other_asset
+asset_list["總資產"]=n_total_asset
+asset_list["短期借款"]=short_debt_list
+asset_list["應付短期票券"]=short_notes_payable_list
+asset_list["應付帳款及票據"]=short_payable_list
+asset_list["預收款項"]=advance_payment_list
+asset_list["一年內到期長期負債"]=one_year_debt_list
+asset_list["其餘流動負債"]=other_current_debt_list
+asset_list["流動負債"]=total_current_debt_list
+asset_list["長期負債"]=long_term_debt_list
+asset_list["其餘負債"]=other_debt_list
+asset_list["總負債"]=total_debt_list
+asset_list["淨值"]=total_de_list
+n_short_debt_list=asset_list["短期借款"].map(lambda x:int(x))
+n_short_notes_payable_list=asset_list["應付短期票券"].map(lambda x:int(x))
+n_short_payable_list=asset_list["應付帳款及票據"].map(lambda x:int(x))
+n_advance_payment_list=asset_list["預收款項"].map(lambda x:int(x))
+n_one_year_debt_list=asset_list["一年內到期長期負債"].map(lambda x:int(x))
+n_other_current_debt_list=asset_list["其餘流動負債"].map(lambda x:int(x))
+n_total_current_debt_list=asset_list["流動負債"].map(lambda x:int(x))
+n_long_term_debt_list=asset_list["長期負債"].map(lambda x:int(x))
+n_other_debt_list=asset_list["其餘負債"].map(lambda x:int(x))
+n_total_debt_list=asset_list["總負債"].map(lambda x:int(x))
+n_total_de_list=asset_list["淨值"].map(lambda x:int(x))
+asset_list["短期借款"]=n_short_debt_list
+asset_list["應付短期票券"]=n_short_notes_payable_list
+asset_list["應付帳款及票據"]=n_short_payable_list
+asset_list["預收款項"]=n_advance_payment_list
+asset_list["一年內到期長期負債"]=n_one_year_debt_list
+asset_list["其餘流動負債"]=n_other_current_debt_list
+asset_list["流動負債"]=n_total_current_debt_list
+asset_list["長期負債"]=n_long_term_debt_list
+asset_list["其餘負債"]=n_other_debt_list
+asset_list["總負債"]=n_total_debt_list
+asset_list["淨值"]=n_total_de_list
+newasset_list=asset_list.T
+newasset_list.columns=asset_year_list
+
+##計算現金流量表
+cf=driver.find_element_by_xpath('//*[@id="content"]/div[1]/div/ol/li[7]').click()
+source=driver.page_source
+soup=BeautifulSoup(source,'lxml')
+cf_page=soup.find_all("table")[3]
+cf_year_list,depreciation_list,amortization_list=[],[],[]
+operating_cash_flow_list,investment_cash_flow_list,financing_cash_flow_list=[],[],[]
+capital_expenditures_list,free_cash_flow_list,net_cash_flow_list=[],[],[]
+cf_year=cf_page.find_all("th")[0:100]
+for a in cf_year:
+    cf_year_text=a.text
+    cf_year_list.append(cf_year_text)
+depreciation=cf_page.find_all("tr")[1]
+for b in depreciation:
+    depreciation_text=b.text
+    depreciation_list.append(depreciation_text.replace(",","").replace("無","0"))
+amortization=cf_page.find_all("tr")[2]
+for c in amortization:
+    amortization_text=c.text
+    amortization_list.append(amortization_text.replace(",","").replace("無","0"))
+operating_cash_flow=cf_page.find_all("tr")[3]
+for d in operating_cash_flow:
+    operating_cash_flow_text=d.text
+    operating_cash_flow_list.append(operating_cash_flow_text.replace(",","").replace("無","0"))
+investment_cash_flow=cf_page.find_all("tr")[4]
+for e in investment_cash_flow:
+    investment_cash_flow_text=e.text
+    investment_cash_flow_list.append(investment_cash_flow_text.replace(",","").replace("無","0"))
+financing_cash_flow=cf_page.find_all("tr")[5]
+for f in financing_cash_flow:
+    financing_cash_flow_text=f.text
+    financing_cash_flow_list.append(financing_cash_flow_text.replace(",","").replace("無","0"))
+capital_expenditures=cf_page.find_all("tr")[6]
+for g in capital_expenditures:
+    capital_expenditures_text=g.text
+    capital_expenditures_list.append(capital_expenditures_text.replace(",","").replace("無","0"))    
+free_cash_flow=cf_page.find_all("tr")[7]
+for h in free_cash_flow:
+    free_cash_flow_text=h.text
+    free_cash_flow_list.append(free_cash_flow_text.replace(",","").replace("無","0"))
+net_cash_flow=cf_page.find_all("tr")[8]
+for i in net_cash_flow:
+    net_cash_flow_text=i.text
+    net_cash_flow_list.append(net_cash_flow_text.replace(",","").replace("無","0"))
+
+
+cf_list=pd.DataFrame()
+cf_list["折舊"]=depreciation_list
+cf_list["攤銷"]=amortization_list
+cf_list["營業現金流"]=operating_cash_flow_list
+cf_list["投資現金流"]=investment_cash_flow_list
+cf_list["融資現金流"]= financing_cash_flow_list
+cf_list["資本支出"]=capital_expenditures_list
+cf_list["自由現金流"]=free_cash_flow_list
+cf_list["淨現金流"]=net_cash_flow_list
+n_depreciation=cf_list["折舊"].map(lambda x:int(x))
+n_amortization=cf_list["攤銷"].map(lambda x:int(x))
+n_operating_cash_flow=cf_list["營業現金流"].map(lambda x:int(x))
+n_investment_cash_flow=cf_list["投資現金流"].map(lambda x:int(x))
+n_financing_cash_flow=cf_list["融資現金流"].map(lambda x:int(x))
+n_capital_expenditures=cf_list["資本支出"].map(lambda x:int(x))
+n_free_cash_flow=cf_list["自由現金流"].map(lambda x:int(x))
+n_net_cash_flow=cf_list["淨現金流"].map(lambda x:int(x))
+cf_list["折舊"]=n_depreciation
+cf_list["攤銷"]=n_amortization
+cf_list["營業現金流"]=n_operating_cash_flow
+cf_list["投資現金流"]=n_investment_cash_flow
+cf_list["融資現金流"]=n_financing_cash_flow
+cf_list["資本支出"]=n_capital_expenditures
+cf_list["自由現金流"]=n_free_cash_flow
+cf_list["淨現金流"]=n_net_cash_flow
+
+newcf_list=cf_list.T
+newcf_list.columns=cf_year_list
+
+##綜合評估表
+c_list=pd.DataFrame()
+c_list["流動比率"]=(asset_list["流動資產"]/asset_list["流動負債"])*100
+c_list["速動比率"]=((asset_list["現金及約當現金"]+asset_list["短期投資"]+asset_list["應收帳款及票據"])/asset_list["流動負債"])*100
+c_list["应收帐款周转率"]=income_list["營收"]/asset_list["應收帳款及票據"]
+c_list["存货周转率"]=(income_list["營收"]-income_list["毛利"])/asset_list["存貨"]
+c_list["应付帐款周转率"]=(income_list["營收"]-income_list["毛利"])/(asset_list["應付帳款及票據"]+asset_list["應付短期票券"])
+c_list["应收帐款周转天數"]=365/c_list["应收帐款周转率"]
+c_list["存货周转天數"]=365/c_list["存货周转率"]
+c_list["应付帐款周转天數"]=365/c_list["应付帐款周转率"]
+c_list["營運周转天數"]=c_list["应收帐款周转天數"]+c_list["存货周转天數"]-c_list["应付帐款周转天數"]
+c_list["固定資產周轉率"]=(income_list["營收"]/(asset_list["總資產"]-asset_list["流動資產"]))*100
+c_list["總資產報酬率"]=(income_list["稅后利益"]/asset_list["總資產"])*100
+c_list["股東權益報酬率"]=(income_list["稅后利益"]/asset_list["淨值"])*100
+c_list["负债/总资产比率"]=(asset_list["總負債"]/asset_list["總資產"])*100
+c_list["负债/股东权益比率"]=(asset_list["總負債"]/asset_list["淨值"])*100
+c_list["总资产/股东权益"]=(asset_list["總資產"]/asset_list["淨值"])*100
+c_list["毛利率"]=(income_list["毛利"]/income_list["營收"])*100
+c_list["营业利益率"]=(income_list["營業利益"]/income_list["營收"])*100
+c_list["税前净利率"]=(income_list["稅前利益"]/income_list["營收"])*100
+c_list["税后净利率"]=(income_list["稅后利益"]/income_list["營收"])*100
+c_list["营收成长率"]=revenuelist["年增減率"]
+c_list["營現流/營收"]=(cf_list["營業現金流"]/income_list["營收"])*100
+c_list["投資/營現流"]=(cf_list["資本支出"]/cf_list["營業現金流"])*100
+c_list["自由現金流"]=cf_list["自由現金流"]
+c_list["自現流/營現流"]=(cf_list["自由現金流"]/cf_list["營業現金流"])*100
+c_list["營現流/流動負債"]=(cf_list["營業現金流"]/asset_list["流動負債"])*100
+c_list["營現流/總負債"]=(cf_list["營業現金流"]/asset_list["總負債"])*100
+c_list["營現流/净利"]=(cf_list["營業現金流"]/income_list["稅后利益"])*100
+c_list["淨現金流"]=cf_list["淨現金流"]
+newc_list=c_list.T
+newc_list.columns=asset_year_list
+
+##估計表
+average_profit_rate=c_list["税后净利率"][16:].mean()
+number_share=int((income_list["稅后利益"]/eps_list['單季EPS'])[18])
+estimate_list=pd.DataFrame()
+estimate_list["預估净利"]=revenuelist["每月營收"]*(average_profit_rate/100)
+estimate_list["預估EPS"]=estimate_list["預估净利"]/number_share
+new_estimate_list=estimate_list.T
+new_estimate_list.columns=revenue_year_list
+
+#將數據儲存到EXCEL
+with pd.ExcelWriter('C:/Users/user/Desktop/'+num+'.xlsx') as writer:
+    newrevenuelist.to_excel(writer,sheet_name="每月營收")
+    neweps_list.to_excel(writer,sheet_name="每股盈餘")
+    newpe_list.to_excel(writer,sheet_name="每股净值")
+    newincome_list.to_excel(writer,sheet_name="綜合損益表")
+    newasset_list.to_excel(writer,sheet_name="資產負債表")
+    newcf_list.to_excel(writer,sheet_name="現金流量表")
+    newc_list.to_excel(writer,sheet_name="評估表")
+    new_estimate_list.to_excel(writer,sheet_name="估計表")
